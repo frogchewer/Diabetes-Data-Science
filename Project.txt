@@ -1,0 +1,260 @@
+> library(caret)
+> library(dplyr)
+> library(rpart)
+> library(rpart.plot)
+> library(klaR)
+> library(naivebayes)
+> 
+> 
+> #Load Data Set, Split into Test and Train using function
+> 
+> diabetes_data <- read.csv("Desktop/computerScience/Rfiles/Data 101 Project/diabetes_data.csv")
+> 
+> create_train_test <- function(data, size = 0.8, train = TRUE) {
++   n_row = nrow(data)
++   total_row = size * n_row
++   train_sample <- 1: total_row
++   if (train == TRUE) {
++     return (data[train_sample, ])
++   } else {
++     return (data[-train_sample, ])
++   }
++ }
+> 
+> diabetes_data = diabetes_data[sample(1:nrow(diabetes_data)), ]
+> 
+> diabetes_data <- diabetes_data %>% 
++   mutate(Diabetes = factor(Diabetes, levels = c(0,1), labels = c("No Diabetes", "Diabetes")), 
++   Sex = factor(Sex, levels = c(0,1), labels = c("Female", "Male")),
++   HighChol = factor(HighChol, levels = c(0,1), labels = c("Low or Normal Chol", "High Chol")),
++   #HighBP = factor(HighBP, levels = c(0,1), labels = c("Low or Normal BP", "High BP")),
++   CholCheck = factor(CholCheck, levels = c(0,1), labels = c("No Recent Check", "Recent Check")),
++   Smoker = factor(Smoker, levels = c(0,1), labels = c("Nonsmoker", "Smoker")),
++   HeartDiseaseorAttack = factor(HeartDiseaseorAttack, levels = c(0,1), labels = c("No Heart Trouble", "Heart Trouble")),
++   PhysActivity = factor(PhysActivity, levels = c(0,1), labels = c("Not Active", "Active")),
++   Fruits = factor(Fruits, levels = c(0,1), labels = c("Does not eat fruits", "Eats Fruits")),
++   Veggies = factor(Veggies, levels = c(0,1), labels = c("Does not eat veggies", "Eats veggies")),
++   HvyAlcoholConsump = factor(HvyAlcoholConsump, levels = c(0,1), labels = c("Does not drink heavily", "Drinks heavily")),
++   DiffWalk = factor(DiffWalk, levels = c(0,1), labels = c("No Difficulty Walking", "Difficulty Walking")),
++   Stroke = factor(Stroke, levels = c(0,1), labels = c("No Stroke", "Stroke")),
++   Age = factor(Age, levels = c(1,2,3,4,5,6,7,8,9,10,11,12,13), labels = c("18-24","25-29","30-34" ,"35-39", "40-44", "45-49", "50-54", "55-59", "60-64", "65-69", "70-74", "75-79" ,"80+")),
++   )
+> 
+> 
+> 
+> #Summary
+> summary(diabetes_data)
+      Age            Sex                      HighChol               CholCheck          BMI       
+ 65-69  :10856   Female:38386   Low or Normal Chol:33529   No Recent Check: 1749   Min.   :12.00  
+ 60-64  :10112   Male  :32306   High Chol         :37163   Recent Check   :68943   1st Qu.:25.00  
+ 55-59  : 8603                                                                     Median :29.00  
+ 70-74  : 8044                                                                     Mean   :29.86  
+ 50-54  : 6872                                                                     3rd Qu.:33.00  
+ 80+    : 5426                                                                     Max.   :98.00  
+ (Other):20779                                                                                    
+       Smoker            HeartDiseaseorAttack     PhysActivity                   Fruits     
+ Nonsmoker:37094   No Heart Trouble:60243     Not Active:20993   Does not eat fruits:27443  
+ Smoker   :33598   Heart Trouble   :10449     Active    :49699   Eats Fruits        :43249  
+                                                                                            
+                                                                                            
+                                                                                            
+                                                                                            
+                                                                                            
+                 Veggies                   HvyAlcoholConsump    GenHlth         MentHlth     
+ Does not eat veggies:14932   Does not drink heavily:67672   Min.   :1.000   Min.   : 0.000  
+ Eats veggies        :55760   Drinks heavily        : 3020   1st Qu.:2.000   1st Qu.: 0.000  
+                                                             Median :3.000   Median : 0.000  
+                                                             Mean   :2.837   Mean   : 3.752  
+                                                             3rd Qu.:4.000   3rd Qu.: 2.000  
+                                                             Max.   :5.000   Max.   :30.000  
+                                                                                             
+    PhysHlth                      DiffWalk           Stroke          HighBP              Diabetes    
+ Min.   : 0.00   No Difficulty Walking:52826   No Stroke:66297   Min.   :0.0000   No Diabetes:35346  
+ 1st Qu.: 0.00   Difficulty Walking   :17866   Stroke   : 4395   1st Qu.:0.0000   Diabetes   :35346  
+ Median : 0.00                                                   Median :1.0000                      
+ Mean   : 5.81                                                   Mean   :0.5635                      
+ 3rd Qu.: 6.00                                                   3rd Qu.:1.0000                      
+ Max.   :30.00                                                   Max.   :1.0000                      
+                                                                                                     
+> head(diabetes_data)
+        Age    Sex           HighChol    CholCheck BMI    Smoker HeartDiseaseorAttack PhysActivity
+57250   80+   Male Low or Normal Chol Recent Check  24    Smoker        Heart Trouble   Not Active
+3167  70-74 Female          High Chol Recent Check  33    Smoker     No Heart Trouble       Active
+23156 30-34   Male Low or Normal Chol Recent Check  27 Nonsmoker     No Heart Trouble       Active
+69965 60-64   Male Low or Normal Chol Recent Check  32 Nonsmoker     No Heart Trouble       Active
+50972 75-79   Male          High Chol Recent Check  28 Nonsmoker        Heart Trouble       Active
+62263 60-64   Male          High Chol Recent Check  30    Smoker     No Heart Trouble       Active
+                   Fruits              Veggies      HvyAlcoholConsump GenHlth MentHlth PhysHlth
+57250         Eats Fruits Does not eat veggies         Drinks heavily       3        0        0
+3167          Eats Fruits         Eats veggies Does not drink heavily       2        0        2
+23156         Eats Fruits         Eats veggies Does not drink heavily       2        0        0
+69965 Does not eat fruits         Eats veggies Does not drink heavily       2        0        2
+50972         Eats Fruits         Eats veggies Does not drink heavily       3        0        0
+62263 Does not eat fruits         Eats veggies Does not drink heavily       3        0        0
+                   DiffWalk    Stroke HighBP    Diabetes
+57250 No Difficulty Walking No Stroke      1    Diabetes
+3167  No Difficulty Walking No Stroke      0 No Diabetes
+23156 No Difficulty Walking No Stroke      0 No Diabetes
+69965 No Difficulty Walking No Stroke      1    Diabetes
+50972 No Difficulty Walking No Stroke      1    Diabetes
+62263 No Difficulty Walking No Stroke      0    Diabetes
+> tapply(diabetes_data$GenHlth, diabetes_data$Diabetes, mean)
+No Diabetes    Diabetes 
+   2.383183    3.290981 
+> health <- table(diabetes_data$GenHlth, diabetes_data$Diabetes)
+> health
+   
+    No Diabetes Diabetes
+  1        7142     1140
+  2       13491     6381
+  3        9970    13457
+  4        3513     9790
+  5        1230     4578
+> barplot(health[,1])
+> barplot(health[,2])
+> 
+> summary(subset(diabetes_data, diabetes_data$Diabetes == "Diabetes"))
+      Age           Sex                      HighChol               CholCheck          BMI       
+ 65-69  :6558   Female:18411   Low or Normal Chol:11660   No Recent Check:  241   Min.   :13.00  
+ 60-64  :5733   Male  :16935   High Chol         :23686   Recent Check   :35105   1st Qu.:27.00  
+ 70-74  :5141                                                                     Median :31.00  
+ 55-59  :4263                                                                     Mean   :31.94  
+ 75-79  :3403                                                                     3rd Qu.:35.00  
+ 80+    :3209                                                                     Max.   :98.00  
+ (Other):7039                                                                                    
+       Smoker            HeartDiseaseorAttack     PhysActivity                   Fruits     
+ Nonsmoker:17029   No Heart Trouble:27468     Not Active:13059   Does not eat fruits:14653  
+ Smoker   :18317   Heart Trouble   : 7878     Active    :22287   Eats Fruits        :20693  
+                                                                                            
+                                                                                            
+                                                                                            
+                                                                                            
+                                                                                            
+                 Veggies                   HvyAlcoholConsump    GenHlth         MentHlth     
+ Does not eat veggies: 8610   Does not drink heavily:34514   Min.   :1.000   Min.   : 0.000  
+ Eats veggies        :26736   Drinks heavily        :  832   1st Qu.:3.000   1st Qu.: 0.000  
+                                                             Median :3.000   Median : 0.000  
+                                                             Mean   :3.291   Mean   : 4.462  
+                                                             3rd Qu.:4.000   3rd Qu.: 3.000  
+                                                             Max.   :5.000   Max.   :30.000  
+                                                                                             
+    PhysHlth                       DiffWalk           Stroke          HighBP              Diabetes    
+ Min.   : 0.000   No Difficulty Walking:22225   No Stroke:32078   Min.   :0.0000   No Diabetes:    0  
+ 1st Qu.: 0.000   Difficulty Walking   :13121   Stroke   : 3268   1st Qu.:1.0000   Diabetes   :35346  
+ Median : 1.000                                                   Median :1.0000                      
+ Mean   : 7.954                                                   Mean   :0.7527                      
+ 3rd Qu.:15.000                                                   3rd Qu.:1.0000                      
+ Max.   :30.000                                                   Max.   :1.0000                      
+                                                                                                      
+> summary(subset(diabetes_data, diabetes_data$Diabetes != "Diabetes"))
+      Age            Sex                      HighChol               CholCheck          BMI       
+ 60-64  : 4379   Female:19975   Low or Normal Chol:21869   No Recent Check: 1508   Min.   :12.00  
+ 55-59  : 4340   Male  :15371   High Chol         :13477   Recent Check   :33838   1st Qu.:24.00  
+ 65-69  : 4298                                                                     Median :27.00  
+ 50-54  : 3784                                                                     Mean   :27.77  
+ 45-49  : 2906                                                                     3rd Qu.:31.00  
+ 70-74  : 2903                                                                     Max.   :98.00  
+ (Other):12736                                                                                    
+       Smoker            HeartDiseaseorAttack     PhysActivity                   Fruits     
+ Nonsmoker:20065   No Heart Trouble:32775     Not Active: 7934   Does not eat fruits:12790  
+ Smoker   :15281   Heart Trouble   : 2571     Active    :27412   Eats Fruits        :22556  
+                                                                                            
+                                                                                            
+                                                                                            
+                                                                                            
+                                                                                            
+                 Veggies                   HvyAlcoholConsump    GenHlth         MentHlth     
+ Does not eat veggies: 6322   Does not drink heavily:33158   Min.   :1.000   Min.   : 0.000  
+ Eats veggies        :29024   Drinks heavily        : 2188   1st Qu.:2.000   1st Qu.: 0.000  
+                                                             Median :2.000   Median : 0.000  
+                                                             Mean   :2.383   Mean   : 3.042  
+                                                             3rd Qu.:3.000   3rd Qu.: 2.000  
+                                                             Max.   :5.000   Max.   :30.000  
+                                                                                             
+    PhysHlth                       DiffWalk           Stroke          HighBP              Diabetes    
+ Min.   : 0.000   No Difficulty Walking:30601   No Stroke:34219   Min.   :0.0000   No Diabetes:35346  
+ 1st Qu.: 0.000   Difficulty Walking   : 4745   Stroke   : 1127   1st Qu.:0.0000   Diabetes   :    0  
+ Median : 0.000                                                   Median :0.0000                      
+ Mean   : 3.666                                                   Mean   :0.3742                      
+ 3rd Qu.: 2.000                                                   3rd Qu.:1.0000                      
+ Max.   :30.000                                                   Max.   :1.0000                      
+                                                                                                      
+> 
+> #rpart fit to dataset for a particular quality
+> 
+> data_train <- create_train_test(diabetes_data, 0.8, train = TRUE)
+> data_test <- create_train_test(diabetes_data, 0.8, train = FALSE)
+> fit <- rpart(Diabetes~., data = data_train, method = 'class')
+> rpart.plot(fit, extra = 106)
+> 
+> #test rpart results
+> pred_rpart=predict(fit, data_test,type="class")
+> 
+> #Confusion Matrix
+> tab_rpart = table(pred_rpart,data_test$Diabetes)
+> caret::confusionMatrix(tab_rpart)
+Confusion Matrix and Statistics
+
+             
+pred_rpart    No Diabetes Diabetes
+  No Diabetes        5125     1963
+  Diabetes           2018     5033
+                                          
+               Accuracy : 0.7184          
+                 95% CI : (0.7109, 0.7258)
+    No Information Rate : 0.5052          
+    P-Value [Acc > NIR] : <2e-16          
+                                          
+                  Kappa : 0.4369          
+                                          
+ Mcnemar's Test P-Value : 0.3921          
+                                          
+            Sensitivity : 0.7175          
+            Specificity : 0.7194          
+         Pos Pred Value : 0.7231          
+         Neg Pred Value : 0.7138          
+             Prevalence : 0.5052          
+         Detection Rate : 0.3625          
+   Detection Prevalence : 0.5013          
+      Balanced Accuracy : 0.7184          
+                                          
+       'Positive' Class : No Diabetes     
+                                          
+> 
+> #nb for the same quality
+> nb_mod <- NaiveBayes(Diabetes~., data=data_train, laplace = 1)
+> 
+> #test nb results
+> pred <- predict(nb_mod, data_test)
+There were 50 or more warnings (use warnings() to see the first 50)
+> 
+> #Confusion Matrix
+> tab_nb <- table(pred$class, data_test$Diabetes)
+> caret::confusionMatrix(tab_nb)
+Confusion Matrix and Statistics
+
+             
+              No Diabetes Diabetes
+  No Diabetes        5433     2168
+  Diabetes           1710     4828
+                                          
+               Accuracy : 0.7257          
+                 95% CI : (0.7183, 0.7331)
+    No Information Rate : 0.5052          
+    P-Value [Acc > NIR] : < 2.2e-16       
+                                          
+                  Kappa : 0.451           
+                                          
+ Mcnemar's Test P-Value : 2.159e-13       
+                                          
+            Sensitivity : 0.7606          
+            Specificity : 0.6901          
+         Pos Pred Value : 0.7148          
+         Neg Pred Value : 0.7385          
+             Prevalence : 0.5052          
+         Detection Rate : 0.3843          
+   Detection Prevalence : 0.5376          
+      Balanced Accuracy : 0.7254          
+                                          
+       'Positive' Class : No Diabetes     
+                                          
